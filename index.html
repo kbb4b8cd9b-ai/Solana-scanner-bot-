@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Solana Risk Scanner</title>
+<style>
+body{font-family:system-ui;margin:0;background:#0f1115;color:#f5f5f5}
+main{max-width:700px;margin:auto;padding:20px}
+.card{background:#191c23;border-radius:16px;padding:18px;margin:12px 0}
+input,button{width:100%;box-sizing:border-box;padding:14px;border-radius:10px;border:1px solid #444;margin-top:8px}
+input{background:#101217;color:#fff}button{background:#fff;color:#111;font-weight:700}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.value{font-size:24px;font-weight:800}.muted{color:#9ca3af}.reason{padding:8px 0;border-bottom:1px solid #292d36}
+</style>
+</head>
+<body>
+<main>
+<h1>Solana Risk Scanner</h1>
+<p class="muted">Analisi difensiva on-chain. Nessun ordine viene inviato.</p>
+<div class="card">
+<label>Token mint address</label>
+<input id="mint" placeholder="Incolla il mint address Solana">
+<button onclick="scan()">ANALIZZA TOKEN</button>
+</div>
+<div id="out"></div>
+</main>
+<script>
+async function scan(){
+ const mint=document.getElementById('mint').value.trim();
+ const out=document.getElementById('out');
+ if(!mint){out.innerHTML='<div class="card">Inserisci un mint address.</div>';return}
+ out.innerHTML='<div class="card">Analisi in corso...</div>';
+ try{
+  const r=await fetch('/api/scan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mint})});
+  const d=await r.json();
+  if(!r.ok) throw new Error(d.detail||'Errore');
+  out.innerHTML=`
+  <div class="card">
+   <div class="muted">RISK SCORE</div>
+   <div class="value">${d.risk_score}/100 — ${d.risk_level}</div>
+  </div>
+  <div class="card grid">
+   <div>Mint authority<br><b>${d.authority.mint_active?'ACTIVE':'OFF'}</b></div>
+   <div>Freeze authority<br><b>${d.authority.freeze_active?'ACTIVE':'OFF'}</b></div>
+   <div>Top 1<br><b>${d.holders.top1_pct}%</b></div>
+   <div>Top 10<br><b>${d.holders.top10_pct}%</b></div>
+   <div>Holders<br><b>${d.holders.holder_count}</b></div>
+   <div>Supply<br><b>${Number(d.supply).toLocaleString()}</b></div>
+  </div>
+  <div class="card"><h3>Segnali</h3>${d.reasons.map(x=>'<div class="reason">'+x+'</div>').join('')}</div>
+  <div class="card"><h3>Moduli V1</h3>
+   <div>Liquidità: ${d.liquidity.status}</div>
+   <div>Wash trading: ${d.wash_trading.status}</div>
+  </div>`;
+ }catch(e){out.innerHTML='<div class="card">Errore: '+e.message+'</div>'}
+}
+</script>
+</body>
+</html>
